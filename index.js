@@ -9,7 +9,7 @@ const path = require('path');
 const app = express();
 
 dotenv.config();
-require('./config/db_config');
+const connectDB = require('./config/db_config');
 const PORT = process.env.PORT || 3000;
 
 // Importation des routes
@@ -113,6 +113,7 @@ app.use((req, res) => {
   });
 });
 
+connectDB(); // Démarre la connexion Mongo avant de lancer le serveur
 
 // Démarrage du serveur
 app.listen(PORT, () => {
