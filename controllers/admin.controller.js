@@ -1,5 +1,6 @@
 const User = require("../models/admin.model");
 const jwt = require("jsonwebtoken");
+const bcrypt = require('bcrypt');
 const { signUpErrors, signInErrors } = require("../utils/errors.utils.js");
 const mail = require("../utils/mailer.js");
 
@@ -142,10 +143,9 @@ module.exports.getUser = async (req, res) => {
   try {
     const userId = req.params.userId;
 
-    const Users = await User.findById({ _id: userId }).select("id");
-    console.log(Users);
+    const oneUser = await User.findOne({ _id: userId });
 
-    res.status(200).json(Users);
+    res.status(200).json(oneUser);
   } catch (error) {
     throw error;
   }
@@ -154,19 +154,48 @@ module.exports.getUser = async (req, res) => {
 
 // Fonction pour la mise à jour d'un utilisateur spécifique
 module.exports.updateUser = async (req, res) => {
+
+  const { nom, prenom, number, email, password } = req.body;
+
   try {
     const id = req.params.id;
 
     console.log(id);
     
-    const user = await User.findOneAndUpdate({ _id: id }, req.body);
+    let hashedPassword = null;
+    if (password) {
+      const salt = await bcrypt.genSalt();
+      hashedPassword = await bcrypt.hash(password, salt);
+    }
 
-    if (!user) {
+    const updatedAdmin = await User.findByIdAndUpdate(
+
+      id,
+
+      {
+        $set: {
+          ...(nom && { nom }), // n'inclut que si nom est fourni
+          ...(prenom && { prenom }), // n'inclut que si prenom est fourni
+          ...(number && { number }), // idem pour le numero
+          ...(email && { email }), // idem pour le email
+          ...(hashedPassword && { password: hashedPassword }) // idem pour le mot de passe
+        }
+      },
+
+      {
+        new: true,
+        runValidators: true,
+        upsert: true,
+        setDefaultsOnInsert: true
+      }
+
+    );
+
+    if (!updatedAdmin) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const updatedUser = await User.findOneAndUpdate({ id: req.body.id });
-    res.status(200).json(updatedUser);
+    res.status(200).json(updatedAdmin);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
